@@ -15,8 +15,9 @@ from dataclasses import dataclass
 from src.components.data_transformation import DataTransformation
 from src.components.data_transformation import DataTransformationConfig
 
-# from src.components.model_trainer import ModelTrainerConfig
-# from src.components.model_trainer import ModelTrainer
+from src.components.model_trainer import ModelTrainerConfig
+from src.components.model_trainer import ModelTrainer
+
 @dataclass # decorator allow class to directly define vars
 class DataIngestionConfig:
     train_data_path: str=os.path.join('artifacts',"train.csv") # path where saved
@@ -73,7 +74,9 @@ if __name__=="__main__":
 
     DataIngestion().save_train_test(train_df,test_df)
 
-    # modeltrainer=ModelTrainer()
-    # print(modeltrainer.initiate_model_trainer(train_arr,test_arr))
+    modeltrainer=ModelTrainer()
+    best_model_name, r2score = modeltrainer.initiate_model_trainer(train_arr,test_arr)
+    print(f"best model: {best_model_name}")
+    print(f"R2 Score: {r2score}")
 
 

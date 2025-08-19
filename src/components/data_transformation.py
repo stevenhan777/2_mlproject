@@ -8,12 +8,13 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder,MinMaxScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import VarianceThreshold, mutual_info_regression
 
 from src.exception import CustomException
 from src.logger import logging
 import os
 
-from src.utils import save_object
+from src.utils import save_object, correlation
 
 @dataclass
 class DataTransformationConfig:
@@ -143,17 +144,47 @@ class DataTransformation:
 
             logging.info("Split train and test data completed")
 
+            #Feature selection process
+            var_thres = VarianceThreshold(threshold=0.001) # conservative threshold
+            var_thres.fit(input_feature_train_df)
+
+            constant_columns = [column for column in input_feature_train_df.columns 
+                                if column not in input_feature_train_df.columns[var_thres.get_support()]]
+            #print(constant_columns)
+            input_feature_train_df.drop(constant_columns,axis=1, inplace=True)
+
+            corr_features = correlation(input_feature_train_df, 0.99)
+
+            #print(corr_features)
+
+            # determine the mutual information
+            mutual_info = mutual_info_regression(input_feature_train_df, target_feature_train_df)
+
+            mutual_info = pd.Series(mutual_info)
+            mutual_info.index = input_feature_train_df.columns
+            mutual_info.sort_values(ascending=False)
+
+            # Drop the additional columns determined unnecessary
+            input_feature_train_df.drop(['Hyderabad', 'Kolkata', 'arrival_day', 'arrival_month', 'Multiple carriers Premium economy', 'Route5' ],axis=1, inplace=True)
+
+            # Drop from x_test also
+            input_feature_test_df.drop(['Hyderabad', 'Kolkata', 'arrival_day', 'arrival_month', 'Multiple carriers Premium economy', 'Route5', 'Jet Airways Business', 'Trujet', 'Vistara Premium economy'],axis=1, inplace=True)
+            #print(input_feature_train_df.columns.tolist())
+
+            if input_feature_train_df.columns.tolist() == input_feature_test_df.columns.tolist():
+                pass
+            else:
+                raise CustomException("Error: Columns not the same")
+
+            logging.info(f"Feature selection completed")
+
             logging.info(f"Create train_df and test_df")
 
             train_df = pd.concat([input_feature_train_df, target_feature_train_df], axis=1)
             test_df = pd.concat([input_feature_test_df, target_feature_test_df], axis=1)
 
+            logging.info(f"Convert dataframe to array.")
 
-
-            logging.info(
-                f"Convert dataframe to array."
-        
-            )
             train_arr = np.c_[
                 np.array(input_feature_train_df), np.array(target_feature_train_df)
             ]
